@@ -45,21 +45,21 @@ class OccupancyMap:
 
         self.obstacles += obstacles     # add obstacles to obstacle list
 
-        self.occupancy_grid[:3, :] = 1
-        self.occupancy_grid[-3:, :] = 1
-        self.occupancy_grid[:, :3] = 1
-        self.occupancy_grid[:, -3:] = 1
+        # self.occupancy_grid[:3, :] = 1
+        # self.occupancy_grid[-3:, :] = 1
+        # self.occupancy_grid[:, :3] = 1
+        # self.occupancy_grid[:, -3:] = 1
 
-        self.occupancy_grid[2, 2:8] = 0
-        self.occupancy_grid[2:8, 2] = 0
+        # self.occupancy_grid[2, 2:8] = 0
+        # self.occupancy_grid[2:8, 2] = 0
 
         for obstacle in obstacles:
             # add obstacle to grid vertices (including virtual wall)
             i_start = max(obstacle.x_g - 3, 0)      # 0: first index
             i_end = min(obstacle.x_g + 4, 39)       # 39: last index
-            j_start = max(obstacle.y_g - 3, 0)      # 0: first index
-            j_end = min(obstacle.y_g + 4, 39)       # 39: last index
-            self.occupancy_grid[i_start:i_end+1, j_start:j_end+1] = 1
+            j_start = max(obstacle.y_g - 4, 0)      # 0: first index
+            j_end = min(obstacle.y_g + 3, 39)       # 39: last index
+            self.occupancy_grid[j_start:j_end+1, i_start:i_end+1] = 1
 
         
 

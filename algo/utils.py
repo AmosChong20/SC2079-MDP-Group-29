@@ -14,7 +14,7 @@ def grid_to_coords(x_g: int, y_g: int):
         y (float): y coordinate (continuous)
     """
 
-    return x_g*200/c.GRID_SIZE, y_g*200/c.GRID_SIZE
+    return x_g*200/c.GRID_SIZE, 200 - y_g*200/c.GRID_SIZE
 
 def coords_to_grid(x: float, y: float):
     """Convert continuous coordinates to grid vertices coordinates
@@ -162,3 +162,7 @@ def change_of_basis(p1, p2):
 
 def deg_to_rad(deg):
     return math.pi * deg / 180
+
+def rad_to_deg(rad):
+    angle = 180 * rad / math.pi
+    return angle + 360 if angle < 0 else angle

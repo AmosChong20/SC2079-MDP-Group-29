@@ -4,15 +4,18 @@ import numpy as np
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__ + '\..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 import utils
 from objects.Obstacle import Obstacle
+from objects.OccupancyMap import OccupancyMap
 import pathfinding.reeds_shepp as rs
 import constants as c
 import copy
+from typing import List
 
 class Hamiltonian():
-    def __init__(self, map, obstacles, x_start, y_start, theta_start, theta_offset=0, 
+    def __init__(self, map: OccupancyMap, obstacles: List[Obstacle], x_start: float, y_start: float, theta_start: float, theta_offset=0, 
                           metric='euclidean', minR=25) -> None:
         assert -np.pi < theta_start, theta_offset <= np.pi
         self.map = map
@@ -48,14 +51,22 @@ class Hamiltonian():
         path = []
 
         obstacles = self.obstacles.copy()
+
+        # obstacle_test = obstacles[0]
+        # checkpoints = obstacle_to_checkpoint_all(self.map, obstacle_test, self.theta_offset)
+        # print(f"Obstacle: {utils.grid_to_coords(obstacle_test.x_g, obstacle_test.y_g)}, Checkpoint: {checkpoints}, No of checkpoints: {len(checkpoints)}\n")
+
         while obstacles:
             nearest_neighbor = None
             minDist = float('inf')
             for obstacle in obstacles:
+                print("Obstacle: ", obstacle)
                 checkpoint = obstacle_to_checkpoint(self.map, obstacle, self.theta_offset)
+                # print(f"Obstacle: {obstacle}, Checkpoint: {checkpoint}")
                 if checkpoint == None:
                     obstacles.remove(obstacle)
                     continue
+                print(f"Current Pos: {current_pos}, Checkpoint: {checkpoint}")
                 if self.metric == 'euclidean':
                     dist = utils.l2(current_pos[0], current_pos[1], checkpoint[0], checkpoint[1])
                 elif self.metric == 'reeds-shepp':
@@ -74,9 +85,11 @@ class Hamiltonian():
 
 def obstacle_to_checkpoint(map, obstacle: Obstacle, theta_offset):
     starting_x, starting_y = utils.grid_to_coords(obstacle.x_g, obstacle.y_g)
+    print(starting_x, starting_y)
     starting_x += offset_x(obstacle.facing)
     starting_y += offset_y(obstacle.facing)
     starting_image_to_pos_theta = offset_theta(obstacle.facing, np.pi)
+    # print(starting_x, starting_y, utils.rad_to_deg(starting_image_to_pos_theta))
 
     theta_scan_list = [0, np.pi/36, -np.pi/36, np.pi/18, -np.pi/18, np.pi/12, -np.pi/12, 
                        np.pi/9, -np.pi/9, np.pi/7.2, -np.pi/7.2, np.pi/6, -np.pi/6, 
@@ -107,6 +120,8 @@ def obstacle_to_checkpoint_all(map, obstacle: Obstacle, theta_offset):
     starting_y += offset_y(obstacle.facing)
     starting_image_to_pos_theta = offset_theta(obstacle.facing, np.pi)
 
+    print(starting_x, starting_y, utils.rad_to_deg(starting_image_to_pos_theta))
+
     valid_checkpoints = []
 
     theta_scan_list = [0, np.pi/36, -np.pi/36, np.pi/18, -np.pi/18, np.pi/12, -np.pi/12, np.pi/9, -np.pi/9, np.pi/7.2, -np.pi/7.2, np.pi/6, -np.pi/6]
@@ -117,16 +132,16 @@ def obstacle_to_checkpoint_all(map, obstacle: Obstacle, theta_offset):
         for theta_scan in theta_scan_list:
             cur_image_to_pos_theta = utils.M(starting_image_to_pos_theta + theta_scan)
             cur_x = starting_x + r_scan*np.cos(cur_image_to_pos_theta)
-            cur_y = starting_y + r_scan*np.sin(cur_image_to_pos_theta)
+            cur_y = starting_y - r_scan*np.sin(cur_image_to_pos_theta)
             theta = utils.M(cur_image_to_pos_theta - theta_offset)
 
             if not map.collide_with_point(cur_x, cur_y) and not \
-                map.collide_with_point(cur_x + 0.5*c.REAR_AXLE_TO_CENTER*np.cos(theta), cur_y + 0.5*c.REAR_AXLE_TO_CENTER*np.sin(theta)) and not \
-                map.collide_with_point(cur_x - 0.5*c.REAR_AXLE_TO_CENTER*np.cos(theta), cur_y - 0.5*c.REAR_AXLE_TO_CENTER*np.sin(theta)):
+                map.collide_with_point(cur_x + 0.5*c.REAR_AXLE_TO_CENTER*np.cos(theta), cur_y - 0.5*c.REAR_AXLE_TO_CENTER*np.sin(theta)) and not \
+                map.collide_with_point(cur_x - 0.5*c.REAR_AXLE_TO_CENTER*np.cos(theta), cur_y + 0.5*c.REAR_AXLE_TO_CENTER*np.sin(theta)):
                 
                 cur_x -= c.REAR_AXLE_TO_CENTER*np.cos(theta)
-                cur_y -= c.REAR_AXLE_TO_CENTER*np.sin(theta)
-                valid_checkpoints.append((cur_x, cur_y, theta, obstacle.id))
+                cur_y += c.REAR_AXLE_TO_CENTER*np.sin(theta)
+                valid_checkpoints.append((cur_x, cur_y, utils.rad_to_deg(theta), obstacle.id))
 
     return valid_checkpoints
 
@@ -137,16 +152,16 @@ def offset_x(facing: str):
     elif facing == 'S':
         return 5.
     elif facing == 'E':
-        return 0.
-    elif facing == 'W':
         return 10.
+    elif facing == 'W':
+        return 0.
 
 
 def offset_y(facing: str):
     if facing == 'N':
-        return 0.
-    elif facing == 'S':
         return 10.
+    elif facing == 'S':
+        return 0.
     elif facing == 'E':
         return 5.
     elif facing == 'W':
@@ -191,11 +206,15 @@ def print_grid(grid_size, obstacles):
 
 
 if __name__ == "__main__":
-    obstacles = [Obstacle(10, 10, 'N'), Obstacle(20, 10, 'S'), Obstacle(10, 20, 'E'), Obstacle(20, 20, 'W'), 
-                 Obstacle(38, 38, 'N')]
-    from objects.OccupancyMap import OccupancyMap
+    obstacles = [Obstacle(8, 8, 'N', 1), Obstacle(10, 10, 'S', 2), Obstacle(10, 18, 'E', 3), Obstacle(14, 5, 'W', 4), 
+                 Obstacle(13, 13, 'N', 5)]
     map = OccupancyMap(obstacles) 
-    tsp = Hamiltonian(obstacles, 5, 15, 0, -np.pi/2, 'euclidean')
+    np.set_printoptions(threshold=np.inf, linewidth=np.inf)
+    print(map.occupancy_grid)
+    x_start = 1
+    y_start = 1
+    robot_position = utils.grid_to_coords(x_start * 2 - 2, c.GRID_SIZE - y_start * 2 + 2)
+    tsp = Hamiltonian(map, obstacles, robot_position[0], robot_position[1], 0, 0, 'reeds-shepp')
     path = tsp.find_nearest_neighbor_path()
     print("\nShortest Path:")
     print(path)

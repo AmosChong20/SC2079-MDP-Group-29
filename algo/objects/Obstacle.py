@@ -20,8 +20,10 @@ class Obstacle(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.bottomleft = utils.coords_to_pixelcoords(x_g, y_g)
 
-        self.x_g = x_g
-        self.y_g = y_g
+        self.x_g = x_g * 2 - 2
+        self.y_g = c.GRID_SIZE - y_g * 2 + 1
+        self.android_x = x_g
+        self.android_y = y_g
         self.facing = facing
         self.id = id
         self.theta = utils.facing_to_rad(facing)
@@ -32,6 +34,9 @@ class Obstacle(pygame.sprite.Sprite):
             self.image = pygame.transform.rotate(self.image, 180)
         elif facing == 'W':
             self.image = pygame.transform.rotate(self.image, 90)
+    
+    def __repr__(self) -> str:
+        return f"Obstacle({self.android_x}, {self.android_y}, {self.facing}, {self.id})"
 
 class VirtualWall(pygame.sprite.Sprite):
     def __init__(self, x_g: int, y_g: int) -> None:
