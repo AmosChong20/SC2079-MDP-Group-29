@@ -14,7 +14,8 @@ def grid_to_coords(x_g: int, y_g: int):
         y (float): y coordinate (continuous)
     """
 
-    return x_g*200/c.GRID_SIZE, 200 - y_g*200/c.GRID_SIZE
+    # return x_g*200/c.GRID_SIZE, 200 - y_g*200/c.GRID_SIZE
+    return (x_g * 2 - 2) * 200 / c.GRID_SIZE, (y_g * 2 - 2) * 200 / c.GRID_SIZE
 
 def coords_to_grid(x: float, y: float):
     """Convert continuous coordinates to grid vertices coordinates

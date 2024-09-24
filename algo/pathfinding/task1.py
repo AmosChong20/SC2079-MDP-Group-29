@@ -1,3 +1,8 @@
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__ + "/..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 from algo.pathfinding import *
 from algo.pathfinding.pathcommands import *
 from algo.pathfinding.hamiltonian import Hamiltonian
@@ -24,23 +29,24 @@ class task1():
         minR=26.5
 
         for obstacle in message["data"]["obstacles"]:
-            obsDIR = obstacle["dir"]
-            if obsDIR == "N":
-                invertObs = "S"
-            elif obsDIR == "S":
-                invertObs = "N"
-            elif obsDIR == "W":
-                invertObs = "E"
-            elif obsDIR == "E":
-                invertObs = "W"
-            obstacles.append(Obstacle(obstacle["x"] * 2, obstacle["y"] * 2, invertObs, int(obstacle["id"])))
+            # obsDIR = obstacle["dir"]
+            # if obsDIR == "N":
+            #     invertObs = "S"
+            # elif obsDIR == "S":
+            #     invertObs = "N"
+            # elif obsDIR == "W":
+            #     invertObs = "E"
+            # elif obsDIR == "E":
+            #     invertObs = "W"
+            obstacles.append(Obstacle(obstacle["x"], obstacle["y"], obstacle["dir"], int(obstacle["id"])))
 
         map = OccupancyMap(obstacles)
-        tsp = Hamiltonian(map, obstacles, 10, 10, 0, -np.pi/2, 'euclidean', minR) # 3rd element: (N: np.pi/2, E: 0)
+        tsp = Hamiltonian(map, obstacles, 1, 1, 0, 0, 'euclidean', minR) # 3rd element: (N: np.pi/2, E: 0)
         current_pos = tsp.start
         obstacle_path = tsp.find_nearest_neighbor_path()
         for idx, obstacle in enumerate(obstacle_path):
-            valid_checkpoints = obstacle_to_checkpoint_all(map, obstacle, theta_offset=-np.pi/2)
+            valid_checkpoints = obstacle_to_checkpoint_all(map, obstacle, theta_offset=0)
+            print(f"Obstacle {obstacle.id} at (x_g: {obstacle.x_g}, y_g: {obstacle.y_g}) has {len(valid_checkpoints)} checkpoints.")
             path = None
             while path == None and valid_checkpoints:
                 checkpoint = valid_checkpoints.pop(0)
@@ -92,9 +98,11 @@ class task1():
 
 if __name__ == "__main__":
     message = {"type": "START_TASK", "data": {"task": "EXPLORATION", "robot": {"id": "R", "x": 1, "y": 1, "dir": 'N'},
-                                               "obstacles": [{"id": "00", "x": 8, "y": 5, "dir": 'S'},
-                                                             {"id": "01", "x": 10, "y": 17, "dir": 'W'},
-                                                             {"id": "02", "x": 15, "y": 10, "dir": 'N'}]}}
+                                               "obstacles": [{"id": "00", "x": 8, "y": 8, "dir": 'N'},]}}
+                                                            #  {"id": "01", "x": 10, "y": 10, "dir": 'S'},
+                                                            #  {"id": "02", "x": 10, "y": 18, "dir": 'E'},
+                                                            #  {"id": "03", "x": 14, "y": 5, "dir": 'W'},
+                                                            #  {"id": "04", "x": 13, "y": 13, "dir": 'N'}]}}
     main = task1()
     main.generate_path(message)
     while not main.has_task_ended():
