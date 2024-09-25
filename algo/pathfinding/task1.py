@@ -49,11 +49,12 @@ class task1():
         obstacle_path = tsp.find_nearest_neighbor_path()
         print("Obstacle path: ", obstacle_path)
         for idx, obstacle in enumerate(obstacle_path):
-            valid_checkpoints = obstacle_to_checkpoint(map, obstacle, theta_offset=0, get_all=True)
+            valid_checkpoints, camera_viewpoints = obstacle_to_checkpoint(map, obstacle, theta_offset=0, get_all=True)
             print(f"Obstacle {obstacle.id} at (x: {obstacle.android_x}, y: {obstacle.android_y}) has {len(valid_checkpoints)} checkpoints.")
             path = None
             while path == None and valid_checkpoints:
                 checkpoint = valid_checkpoints.pop(0)
+                camera_viewpoint = camera_viewpoints.pop(0)
 
                 # print(f"Routing to obstacle ({utils.android_to_coords(obstacle.android_x, obstacle.android_y)}), x: {checkpoint[0]}, y: {checkpoint[1]} theta: {checkpoint[2]*180/np.pi}...")
                 algo = HybridAStar(map=map, 
@@ -66,6 +67,7 @@ class task1():
                     print("Path failed to converge, trying another final position...")
 
             if path != None:
+                print(f"Camera Viewpoint: {camera_viewpoint}, Checkpoint: {checkpoint}, Obstacle: {utils.android_to_coords(obstacle.android_x, obstacle.android_y)}")
                 self.paths.append(path)
                 current_pos = (path[-1].x, path[-1].y, path[-1].theta)
                 commands, pathDisplay = construct_path_2(path, L, minR)

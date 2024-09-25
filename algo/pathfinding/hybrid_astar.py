@@ -137,6 +137,7 @@ class HybridAStar():
                 childNode = Node(x_child, y_child, theta_child, prevAction=choice, parent=currentNode)
 
                 if endNode == childNode:
+                    print(f"Node (x:{childNode.x:.2f}, y: {childNode.y:.2f}, theta: {childNode.theta*180/np.pi:.2f})") 
                     print("Path Found!")
                     pathFound = True
                     currentNode = childNode

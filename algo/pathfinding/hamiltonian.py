@@ -1,3 +1,4 @@
+import math
 import random
 import itertools
 import numpy as np
@@ -79,35 +80,39 @@ class Hamiltonian():
         return path
 
 def obstacle_to_checkpoint(map: OccupancyMap, obstacle: Obstacle, theta_offset, get_all=False):
-    starting_x, starting_y = utils.android_to_coords(obstacle.android_x, obstacle.android_y)
-    starting_x += offset_x(obstacle.facing)
-    starting_y += offset_y(obstacle.facing)
-    starting_image_to_pos_theta = offset_theta(obstacle.facing, np.pi)
+    obstacle_x, obstacle_y = utils.android_to_coords(obstacle.android_x, obstacle.android_y)
+    obstacle_x += offset_x(obstacle.facing)
+    obstacle_y += offset_y(obstacle.facing)
+    obstacle_image_to_pos_theta = offset_theta(obstacle.facing, np.pi)
+
+    print(f"Obstacle position: ({obstacle_x}, {obstacle_y})")
 
     valid_checkpoints = []
+    camera_viewpoints = []
 
     theta_scan_list = [0, np.pi/36, -np.pi/36, np.pi/18, -np.pi/18, np.pi/12, -np.pi/12, 
-                       np.pi/9, -np.pi/9, np.pi/7.2, -np.pi/7.2, np.pi/6, -np.pi/6, 
+                       np.pi/9, -np.pi/9, np.pi/7.2, -np.pi/7.2, np.pi/6, -np.pi/6,
                        np.pi*180/35, -np.pi*180/35, np.pi/4.5, -np.pi/4.5, np.pi/4, -np.pi/4]
     r_scan_list = [20, 19, 21, 18, 22, 17, 23, 16, 24, 15, 25, 26, 27, 28, 29, 30]
 
     
     for r_scan in r_scan_list:
         for theta_scan in theta_scan_list:
-            cur_image_to_pos_theta = utils.M(starting_image_to_pos_theta + theta_scan)
-            cur_x = starting_x - r_scan*np.cos(cur_image_to_pos_theta)
-            cur_y = starting_y - r_scan*np.sin(cur_image_to_pos_theta)
-            theta = utils.M(cur_image_to_pos_theta - theta_offset)
+            cur_image_to_pos_theta = utils.M(obstacle_image_to_pos_theta + theta_scan)
+            camera_x = obstacle_x - r_scan*np.cos(cur_image_to_pos_theta)
+            camera_y = obstacle_y - r_scan*np.sin(cur_image_to_pos_theta)
+            camera_theta = utils.M(cur_image_to_pos_theta - theta_offset)
 
-            robot_x, robot_y = utils.get_bottom_left_position_from_camera_pov(cur_x, cur_y, theta)
+            robot_x, robot_y = utils.get_bottom_left_position_from_camera_pov(camera_x, camera_y, camera_theta)
 
-            if not map.collide_with_point(robot_x, robot_y, theta):
+            if not map.collide_with_point(robot_x, robot_y, camera_theta):
                 if not get_all:
-                    return (robot_x, robot_y, theta, obstacle.id)
+                    return (robot_x, robot_y, camera_theta, obstacle.id)
                 else:
-                    valid_checkpoints.append((robot_x, robot_y, theta, obstacle.id))
+                    valid_checkpoints.append((robot_x, robot_y, camera_theta, obstacle.id))
+                    camera_viewpoints.append((camera_x, camera_y, camera_theta))
 
-    return valid_checkpoints
+    return valid_checkpoints, camera_viewpoints
 
 
 def offset_x(facing: str):
@@ -195,11 +200,23 @@ if __name__ == "__main__":
     # print(f"Facing West")
     # bottom_left = utils.get_bottom_left_position_from_camera_pov(70, 70, math.pi)
     # print(f"Robot position (bottom left): {utils.coords_to_android(bottom_left[0], bottom_left[1])}")
-    # print()
+    # print("Facing North East")
+    # bottom_left = utils.get_bottom_left_position_from_camera_pov(70, 70, math.pi/4)
+    # print(f"Robot position (bottom left): {utils.coords_to_android(bottom_left[0], bottom_left[1])}")
+    # print("Facing North West")
+    # bottom_left = utils.get_bottom_left_position_from_camera_pov(70, 70, 3*math.pi/4)
+    # print(f"Robot position (bottom left): {utils.coords_to_android(bottom_left[0], bottom_left[1])}")
+    # print("Facing South East")
+    # bottom_left = utils.get_bottom_left_position_from_camera_pov(70, 70, -math.pi/4)
+    # print(f"Robot position (bottom left): {utils.coords_to_android(bottom_left[0], bottom_left[1])}")
+    # print("Facing South West")
+    # bottom_left = utils.get_bottom_left_position_from_camera_pov(70, 70, -3*math.pi/4)
+    # print(f"Robot position (bottom left): {utils.coords_to_android(bottom_left[0], bottom_left[1])}")
 
     
     obstacles = [Obstacle(8, 8, 'N', 1), Obstacle(3, 15, 'S', 2), Obstacle(10, 18, 'E', 3), Obstacle(14, 5, 'W', 4), 
                  Obstacle(13, 13, 'N', 5)]
+    obstacles = [Obstacle(14, 5, 'W', 4)]
     map = OccupancyMap(obstacles) 
     np.set_printoptions(threshold=np.inf, linewidth=np.inf)
     print(map.occupancy_grid)
