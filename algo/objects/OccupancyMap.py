@@ -1,6 +1,7 @@
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__ + '\..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from objects.Obstacle import Obstacle
 import utils
@@ -61,24 +62,31 @@ class OccupancyMap:
             j_end = min(obstacle.y_g + 3, 39)       # 39: last index
             self.occupancy_grid[j_start:j_end+1, i_start:i_end+1] = 1
 
-        
+    
+    def rotate_point(self, x, y, angle):
+        x_rot = x*np.cos(angle) + y*np.sin(angle)
+        y_rot = x*np.sin(angle) - y*np.cos(angle)
+        return x_rot, y_rot
 
-    def collide_with_point(self, x, y):
-        x_g, y_g = utils.coords_to_grid(x, y)
-        if x_g < 0 or x_g >= 40 or y_g < 0 or y_g >= 40:
-            return 1
-        else:
-            return self.occupancy_grid[x_g, y_g]
+    def collide_with_point(self, x, y, theta):
+        corners = [(x, y), (x + 30, y), (x, y + 30), (x + 30, y + 30)]
+        for corner in corners:
+            x_rot, y_rot = self.rotate_point(corner[0] - x, corner[1] - y, theta)
+            x_g, y_g = utils.coords_to_grid(x_rot + x, y_rot + y)
+            if x_g < 0 or x_g >= 40 or y_g < 0 or y_g >= 40:
+                return 1
+            elif self.occupancy_grid[x_g, y_g] == 1:
+                return 1
+        
+        return 0
+
 
 if __name__ == '__main__':
-    maps = get_maps()
-    map = OccupancyMap(maps[0])
-
-    print(map.collide_with_point(150, 150))
-
-    np.set_printoptions(threshold=sys.maxsize)
+    obstacles = [Obstacle(8, 8, 'N', 1), Obstacle(3, 18, 'S', 2), Obstacle(10, 18, 'E', 3), Obstacle(14, 5, 'W', 4), 
+                 Obstacle(13, 13, 'N', 5)]
+    map = OccupancyMap(obstacles) 
+    np.set_printoptions(threshold=np.inf, linewidth=np.inf)
     print(map.occupancy_grid)
 
-    plt.imshow(map.occupancy_grid, interpolation='none', origin='lower')
-    plt.show()
+    print(map.collide_with_point(60, 100, np.pi/2))
     

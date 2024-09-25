@@ -1,15 +1,17 @@
+import math
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__ + "/..")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
+from algo import utils
 from algo.pathfinding import *
 from algo.pathfinding.pathcommands import *
 from algo.pathfinding.hamiltonian import Hamiltonian
 from algo.pathfinding.hybrid_astar import HybridAStar
 from algo.objects.OccupancyMap import OccupancyMap
 from algo.objects.Obstacle import Obstacle
-from algo.pathfinding.hamiltonian import obstacle_to_checkpoint_all
+from algo.pathfinding.hamiltonian import obstacle_to_checkpoint
 import numpy as np
 import constants as c
 
@@ -24,6 +26,7 @@ class task1():
         self.imageID: list[str] = []
         
     def generate_path(self, message):
+        robot_position = utils.android_to_coords(message["data"]["robot"]["x"], message["data"]["robot"]["y"])
         obstacles = []
         L=26.5*np.pi/4/5 # Can try changing to 26.25 
         minR=26.5
@@ -41,16 +44,18 @@ class task1():
             obstacles.append(Obstacle(obstacle["x"], obstacle["y"], obstacle["dir"], int(obstacle["id"])))
 
         map = OccupancyMap(obstacles)
-        tsp = Hamiltonian(map, obstacles, 1, 1, 0, 0, 'euclidean', minR) # 3rd element: (N: np.pi/2, E: 0)
+        tsp = Hamiltonian(map, obstacles, robot_position[0], robot_position[1], math.pi/2, 0, 'euclidean', minR) # 3rd element: (N: np.pi/2, E: 0)
         current_pos = tsp.start
         obstacle_path = tsp.find_nearest_neighbor_path()
+        print("Obstacle path: ", obstacle_path)
         for idx, obstacle in enumerate(obstacle_path):
-            valid_checkpoints = obstacle_to_checkpoint_all(map, obstacle, theta_offset=0)
-            print(f"Obstacle {obstacle.id} at (x_g: {obstacle.x_g}, y_g: {obstacle.y_g}) has {len(valid_checkpoints)} checkpoints.")
+            valid_checkpoints = obstacle_to_checkpoint(map, obstacle, theta_offset=0, get_all=True)
+            print(f"Obstacle {obstacle.id} at (x: {obstacle.android_x}, y: {obstacle.android_y}) has {len(valid_checkpoints)} checkpoints.")
             path = None
             while path == None and valid_checkpoints:
                 checkpoint = valid_checkpoints.pop(0)
-                print(f"Routing to obstacle (x_g: {obstacle.x_g}, y_g: {obstacle.y_g}), x: {checkpoint[0]}, y: {checkpoint[1]} theta: {checkpoint[2]*180/np.pi}...")
+
+                # print(f"Routing to obstacle ({utils.android_to_coords(obstacle.android_x, obstacle.android_y)}), x: {checkpoint[0]}, y: {checkpoint[1]} theta: {checkpoint[2]*180/np.pi}...")
                 algo = HybridAStar(map=map, 
                             x_0=current_pos[0], y_0=current_pos[1], theta_0=current_pos[2], 
                             x_f=checkpoint[0], y_f=checkpoint[1], 
@@ -98,11 +103,11 @@ class task1():
 
 if __name__ == "__main__":
     message = {"type": "START_TASK", "data": {"task": "EXPLORATION", "robot": {"id": "R", "x": 1, "y": 1, "dir": 'N'},
-                                               "obstacles": [{"id": "00", "x": 8, "y": 8, "dir": 'N'},]}}
-                                                            #  {"id": "01", "x": 10, "y": 10, "dir": 'S'},
+                                               "obstacles": [{"id": "00", "x": 8, "y": 8, "dir": 'N'},
+                                                             {"id": "01", "x": 7, "y": 15, "dir": 'S'},
                                                             #  {"id": "02", "x": 10, "y": 18, "dir": 'E'},
-                                                            #  {"id": "03", "x": 14, "y": 5, "dir": 'W'},
-                                                            #  {"id": "04", "x": 13, "y": 13, "dir": 'N'}]}}
+                                                             {"id": "03", "x": 14, "y": 5, "dir": 'W'},
+                                                             {"id": "04", "x": 13, "y": 13, "dir": 'N'}]}}
     main = task1()
     main.generate_path(message)
     while not main.has_task_ended():

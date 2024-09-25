@@ -3,32 +3,19 @@ import algo.constants as c
 import math
 
 def grid_to_coords(x_g: int, y_g: int):
-    """ Convert grid vertices coordinates to continuous coordinates
-
-    Args:
-        x_g (int): x coordinate (grid vertices)
-        y_g (int): y coordinate (grid vertices)
-
-    Returns:
-        x (float): x coordinate (continuous)
-        y (float): y coordinate (continuous)
-    """
-
-    # return x_g*200/c.GRID_SIZE, 200 - y_g*200/c.GRID_SIZE
-    return (x_g * 2 - 2) * 200 / c.GRID_SIZE, (y_g * 2 - 2) * 200 / c.GRID_SIZE
+    return x_g * 200 / c.GRID_SIZE, (c.GRID_SIZE - y_g - 1) * 200 / c.GRID_SIZE
 
 def coords_to_grid(x: float, y: float):
-    """Convert continuous coordinates to grid vertices coordinates
+    return int(x * c.GRID_SIZE / 200), c.GRID_SIZE - int(y * c.GRID_SIZE / 200) - 1
 
-    Args:
-        x (float): x coordinate (continuous)
-        y (float): y coordinate (continuous)
+def android_to_coords(android_x: int, android_y: int):
+    return (android_x * 2 - 2) * 200 / c.GRID_SIZE, (android_y * 2 - 2) * 200 / c.GRID_SIZE
 
-    Returns:
-        x_g (int): x coordinate (grid vertices)
-        y_g (int): y coordinate (grid vertices)
-    """
-    return int(x//(200/c.GRID_SIZE)), int(y//(200/c.GRID_SIZE))
+def coords_to_android(x: float, y: float):
+    return int((x//(200/c.GRID_SIZE) + 2) // 2), int((y//(200/c.GRID_SIZE) + 2) // 2)
+
+def android_to_grid(android_x: int, android_y: int):
+    return android_x * 2 - 2, c.GRID_SIZE - android_y * 2 + 1
 
 def facing_to_rad(facing: str) -> float:
     """Convert {N, S, E, W} to radians
@@ -167,3 +154,15 @@ def deg_to_rad(deg):
 def rad_to_deg(rad):
     angle = 180 * rad / math.pi
     return angle + 360 if angle < 0 else angle
+
+def get_bottom_left_position_from_camera_pov(camera_pov_x, camera_pov_y, theta):
+    dx = -30
+    dy = 15
+    
+    rotated_dx = dx * math.cos(theta) - dy * math.sin(theta)
+    rotated_dy = dx * math.sin(theta) + dy * math.cos(theta)
+    
+    x_bottom_left = camera_pov_x + rotated_dx
+    y_bottom_left = camera_pov_y + rotated_dy
+    
+    return x_bottom_left, y_bottom_left

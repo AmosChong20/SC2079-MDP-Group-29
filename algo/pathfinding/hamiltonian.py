@@ -33,7 +33,7 @@ class Hamiltonian():
             current_pos = self.start
             total_distance = 0
             for obstacle in obstacle_path:
-                checkpoint = obstacle_to_checkpoint(self.map, obstacle, self.theta_offset)
+                checkpoint = obstacle_to_checkpoint(self.map, obstacle, self.theta_offset, get_all=False)
                 if self.metric == 'euclidean':
                     distance = utils.l2(current_pos[0], current_pos[1], checkpoint[0], checkpoint[1])
                 elif self.metric == 'reeds-shepp':
@@ -52,16 +52,13 @@ class Hamiltonian():
 
         obstacles = self.obstacles.copy()
 
-        # obstacle_test = obstacles[0]
-        # checkpoints = obstacle_to_checkpoint_all(self.map, obstacle_test, self.theta_offset)
-        # print(f"Obstacle: {utils.grid_to_coords(obstacle_test.x_g, obstacle_test.y_g)}, Checkpoint: {checkpoints}, No of checkpoints: {len(checkpoints)}\n")
         checkpoints = {}
         while obstacles:
             nearest_neighbor = None
             minDist = float('inf')
             for obstacle in obstacles:
-                checkpoint = obstacle_to_checkpoint(self.map, obstacle, self.theta_offset)
-                # print(f"Obstacle: {obstacle}, Checkpoint: {checkpoint}")
+                checkpoint = obstacle_to_checkpoint(self.map, obstacle, self.theta_offset, get_all=False)
+
                 if checkpoint == None:
                     obstacles.remove(obstacle)
                     continue
@@ -78,14 +75,16 @@ class Hamiltonian():
             
             path.append(nearest_neighbor)
             obstacles.remove(nearest_neighbor)
-            current_pos = obstacle_to_checkpoint(self.map, nearest_neighbor, self.theta_offset)
+            current_pos = obstacle_to_checkpoint(self.map, nearest_neighbor, self.theta_offset, get_all=False)
         return path
 
-def obstacle_to_checkpoint(map, obstacle: Obstacle, theta_offset):
-    starting_x, starting_y = utils.grid_to_coords(obstacle.android_x, obstacle.android_y)
+def obstacle_to_checkpoint(map: OccupancyMap, obstacle: Obstacle, theta_offset, get_all=False):
+    starting_x, starting_y = utils.android_to_coords(obstacle.android_x, obstacle.android_y)
     starting_x += offset_x(obstacle.facing)
     starting_y += offset_y(obstacle.facing)
     starting_image_to_pos_theta = offset_theta(obstacle.facing, np.pi)
+
+    valid_checkpoints = []
 
     theta_scan_list = [0, np.pi/36, -np.pi/36, np.pi/18, -np.pi/18, np.pi/12, -np.pi/12, 
                        np.pi/9, -np.pi/9, np.pi/7.2, -np.pi/7.2, np.pi/6, -np.pi/6, 
@@ -100,42 +99,13 @@ def obstacle_to_checkpoint(map, obstacle: Obstacle, theta_offset):
             cur_y = starting_y - r_scan*np.sin(cur_image_to_pos_theta)
             theta = utils.M(cur_image_to_pos_theta - theta_offset)
 
-            if not map.collide_with_point(cur_x, cur_y) and not \
-                map.collide_with_point(cur_x + 0.5*c.REAR_AXLE_TO_CENTER*np.cos(theta), cur_y + 0.5*c.REAR_AXLE_TO_CENTER*np.sin(theta)) and not \
-                map.collide_with_point(cur_x - 0.5*c.REAR_AXLE_TO_CENTER*np.cos(theta), cur_y - 0.5*c.REAR_AXLE_TO_CENTER*np.sin(theta)):
-                
-                cur_x -= c.REAR_AXLE_TO_CENTER*np.cos(theta)
-                cur_y -= c.REAR_AXLE_TO_CENTER*np.sin(theta)
-                return (cur_x, cur_y, theta, obstacle.id)
+            robot_x, robot_y = utils.get_bottom_left_position_from_camera_pov(cur_x, cur_y, theta)
 
-    return None
-
-def obstacle_to_checkpoint_all(map, obstacle: Obstacle, theta_offset):
-    starting_x, starting_y = utils.grid_to_coords(obstacle.android_x, obstacle.android_y)
-    starting_x += offset_x(obstacle.facing)
-    starting_y += offset_y(obstacle.facing)
-    starting_image_to_pos_theta = offset_theta(obstacle.facing, np.pi)
-
-    valid_checkpoints = []
-
-    theta_scan_list = [0, np.pi/36, -np.pi/36, np.pi/18, -np.pi/18, np.pi/12, -np.pi/12, np.pi/9, -np.pi/9, np.pi/7.2, -np.pi/7.2, np.pi/6, -np.pi/6]
-    r_scan_list = [20, 19, 21, 18, 22, 17, 23, 16, 24, 15, 25, 26, 27, 28, 29, 30]
-    
-    
-    for r_scan in r_scan_list:
-        for theta_scan in theta_scan_list:
-            cur_image_to_pos_theta = utils.M(starting_image_to_pos_theta + theta_scan)
-            cur_x = starting_x - r_scan*np.cos(cur_image_to_pos_theta)
-            cur_y = starting_y - r_scan*np.sin(cur_image_to_pos_theta)
-            theta = utils.M(cur_image_to_pos_theta - theta_offset)
-
-            if not map.collide_with_point(cur_x, cur_y) and not \
-                map.collide_with_point(cur_x + 0.5*c.REAR_AXLE_TO_CENTER*np.cos(theta), cur_y + 0.5*c.REAR_AXLE_TO_CENTER*np.sin(theta)) and not \
-                map.collide_with_point(cur_x - 0.5*c.REAR_AXLE_TO_CENTER*np.cos(theta), cur_y - 0.5*c.REAR_AXLE_TO_CENTER*np.sin(theta)):
-                
-                cur_x -= c.REAR_AXLE_TO_CENTER*np.cos(theta)
-                cur_y -= c.REAR_AXLE_TO_CENTER*np.sin(theta)
-                valid_checkpoints.append((cur_x, cur_y, theta, obstacle.id))
+            if not map.collide_with_point(robot_x, robot_y, theta):
+                if not get_all:
+                    return (robot_x, robot_y, theta, obstacle.id)
+                else:
+                    valid_checkpoints.append((robot_x, robot_y, theta, obstacle.id))
 
     return valid_checkpoints
 
@@ -200,7 +170,35 @@ def print_grid(grid_size, obstacles):
 
 
 if __name__ == "__main__":
-    obstacles = [Obstacle(8, 8, 'N', 1), Obstacle(10, 10, 'S', 2), Obstacle(10, 18, 'E', 3), Obstacle(14, 5, 'W', 4), 
+    # Conversion function tests
+    # obstacle = Obstacle(8, 8, 'N', 1)
+    # x_g, y_g = obstacle.x_g, obstacle.y_g
+    # android_x, android_y = obstacle.android_x, obstacle.android_y
+    # x, y = utils.grid_to_coords(x_g, y_g)
+    # new_x_g, new_y_g = utils.coords_to_grid(x, y)
+    # coord_x, coord_y = utils.android_to_coords(android_x, android_y)
+    # new_android_x, new_android_y = utils.coords_to_android(coord_x, coord_y)
+    # print(f"Obstacle: {obstacle}, Grid position: ({x_g}, {y_g}), Grids to Coords: ({x}, {y}), Coords to Grid position: ({new_x_g}, {new_y_g})")
+    # print(f"Android position: ({android_x}, {android_y}),  Android to Coords: ({coord_x}, {coord_y}), Coords to Android position: ({new_android_x}, {new_android_y})")
+    # print()
+
+    # print(f"Camera POV (8, 8)")
+    # print("Facing North")
+    # bottom_left = utils.get_bottom_left_position_from_camera_pov(70, 70, math.pi/2)
+    # print(f"Robot position (bottom left): {utils.coords_to_android(bottom_left[0], bottom_left[1])}")
+    # print(f"Facing East")
+    # bottom_left = utils.get_bottom_left_position_from_camera_pov(70, 70, 0)
+    # print(f"Robot position (bottom left): {utils.coords_to_android(bottom_left[0], bottom_left[1])}")
+    # print(f"Facing South")
+    # bottom_left = utils.get_bottom_left_position_from_camera_pov(70, 70, -math.pi/2)
+    # print(f"Robot position (bottom left): {utils.coords_to_android(bottom_left[0], bottom_left[1])}")
+    # print(f"Facing West")
+    # bottom_left = utils.get_bottom_left_position_from_camera_pov(70, 70, math.pi)
+    # print(f"Robot position (bottom left): {utils.coords_to_android(bottom_left[0], bottom_left[1])}")
+    # print()
+
+    
+    obstacles = [Obstacle(8, 8, 'N', 1), Obstacle(3, 15, 'S', 2), Obstacle(10, 18, 'E', 3), Obstacle(14, 5, 'W', 4), 
                  Obstacle(13, 13, 'N', 5)]
     map = OccupancyMap(obstacles) 
     np.set_printoptions(threshold=np.inf, linewidth=np.inf)
