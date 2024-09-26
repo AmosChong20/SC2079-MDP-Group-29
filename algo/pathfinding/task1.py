@@ -25,7 +25,7 @@ class task1():
         self.obstacleID = []
         self.imageID: list[str] = []
         
-    def generate_path(self, message):
+    def generate_path(self, message: dict) -> None:
         robot_position = utils.android_to_coords(message["data"]["robot"]["x"], message["data"]["robot"]["y"])
         obstacles = []
         L=26.5*np.pi/4/5 # Can try changing to 26.25 
@@ -46,7 +46,8 @@ class task1():
         map = OccupancyMap(obstacles)
         tsp = Hamiltonian(map, obstacles, robot_position[0], robot_position[1], math.pi/2, 0, 'euclidean', minR) # 3rd element: (N: np.pi/2, E: 0)
         current_pos = tsp.start
-        obstacle_path = tsp.find_nearest_neighbor_path()
+        # obstacle_path = tsp.find_nearest_neighbor_path()
+        obstacle_path = tsp.find_brute_force_path()
         print("Obstacle path: ", obstacle_path)
         for idx, obstacle in enumerate(obstacle_path):
             valid_checkpoints, camera_viewpoints = obstacle_to_checkpoint(map, obstacle, theta_offset=0, get_all=True)
@@ -78,11 +79,13 @@ class task1():
             
             else:
                 print("Path could not be found, routing to next obstacle...")
+
+        return construct_json(self.commands, self.android)
         
     
     def get_command_to_next_obstacle(self):
         nextCommand = None
-        nextPath = None
+        nextPath = None 
         if self.commands:
             nextCommand = self.commands.pop(0)
         if self.android:
@@ -107,7 +110,6 @@ if __name__ == "__main__":
     message = {"type": "START_TASK", "data": {"task": "EXPLORATION", "robot": {"id": "R", "x": 1, "y": 1, "dir": 'N'},
                                                "obstacles": [{"id": "00", "x": 8, "y": 8, "dir": 'N'},
                                                              {"id": "01", "x": 7, "y": 15, "dir": 'S'},
-                                                            #  {"id": "02", "x": 10, "y": 18, "dir": 'E'},
                                                              {"id": "03", "x": 14, "y": 5, "dir": 'W'},
                                                              {"id": "04", "x": 13, "y": 13, "dir": 'N'}]}}
     main = task1()

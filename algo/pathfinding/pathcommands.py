@@ -1,4 +1,5 @@
 import numpy as np
+from algo import utils
 from algo.enumerations import Gear, Steering
 from algo.objects.Obstacle import Obstacle
 from algo.pathfinding.hamiltonian import Hamiltonian
@@ -115,7 +116,6 @@ def construct_path(path, L, Radius):
 
 
 def construct_path_2(path, L, Radius):
-    print_path(path)
     commands = []
     gridPath = []
     unitDist = L

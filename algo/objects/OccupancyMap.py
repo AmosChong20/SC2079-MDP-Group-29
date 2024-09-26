@@ -64,15 +64,16 @@ class OccupancyMap:
 
     
     def rotate_point(self, x, y, angle):
-        x_rot = x*np.cos(angle) + y*np.sin(angle)
-        y_rot = x*np.sin(angle) - y*np.cos(angle)
+        x_rot = x*np.cos(angle) - y*np.sin(angle)
+        y_rot = x*np.sin(angle) + y*np.cos(angle)
         return x_rot, y_rot
 
     def collide_with_point(self, x, y, theta):
-        corners = [(x, y), (x + 30, y), (x, y + 30), (x + 30, y + 30)]
+        corners = [(x, y), (x + 30, y), (x, y - 30), (x + 30, y - 30)]
         for corner in corners:
             x_rot, y_rot = self.rotate_point(corner[0] - x, corner[1] - y, theta)
             x_g, y_g = utils.coords_to_grid(x_rot + x, y_rot + y)
+            # print(f"Corner: ({corner[0]}, {corner[1]}) -> {utils.coords_to_android(x_rot + x, y_rot + y)}")
             if x_g < 0 or x_g >= 40 or y_g < 0 or y_g >= 40:
                 return 1
             elif self.occupancy_grid[x_g, y_g] == 1:

@@ -220,6 +220,8 @@ if __name__ == "__main__":
     map = OccupancyMap(obstacles) 
     np.set_printoptions(threshold=np.inf, linewidth=np.inf)
     print(map.occupancy_grid)
+
+    print(map.collide_with_point(60, 100, np.pi/2))
     x_start = 1
     y_start = 1
     robot_position = utils.grid_to_coords(x_start, y_start)
